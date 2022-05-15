@@ -33,9 +33,17 @@ from PyQt5.QtCore import Qt
 
 #QT gui imports
 from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QTransform
 
 
 class Window(QMainWindow):
+
+    """
+    Variables to keep in mind:
+    originalFilePath: has the path to the original img
+    originalImagePixmap: the original image
+    imagePixmap: the current image
+    """
 
     def __init__(self, parent = None):
         super().__init__(parent)
@@ -73,17 +81,46 @@ class Window(QMainWindow):
         self.setCentralWidget(widget)
 
 
+# ======================================================================= Sidebar Stuff ===================================
+
     def _createSidebarLayout(self):
         """
         Creates the sidebar that has the image editing options
         """
         sidebar = QVBoxLayout()
-        sidebar.addWidget(QPushButton("Button 1"))
-        sidebar.addWidget(QPushButton("Button 2"))
+        sidebar.addWidget(self.createRotateClockwiseButton())
+        sidebar.addWidget(self.createRotateCounterClockwiseButton())
         sidebar.addWidget(QPushButton("Button 3"))
         sidebar.addWidget(QPushButton("Button 4"))
         return sidebar
 
+    def createRotateClockwiseButton(self):
+        rotateButton = QPushButton("Rotate 90 Clockwise")
+        rotateButton.clicked.connect(self.rotateImageClockwise)
+        return rotateButton
+
+    def createRotateCounterClockwiseButton(self):
+        rotateButton = QPushButton("Rotate 90 Counter-Clockwise")
+        rotateButton.clicked.connect(self.rotateImageCounterClockwise)
+        return rotateButton
+
+    def rotateImageClockwise(self):
+        if self.originalImagePixmap:
+            rotateTransform = QTransform()
+            rotateTransform.rotate(90)
+            self.imagePixmap = self.imagePixmap.transformed(rotateTransform)
+            self.pictureLabel.setPixmap(self.imagePixmap)
+            self.pictureLabel.adjustSize()
+
+    def rotateImageCounterClockwise(self):
+        if self.originalImagePixmap:
+            rotateTransform = QTransform()
+            rotateTransform.rotate(-90)
+            self.imagePixmap = self.imagePixmap.transformed(rotateTransform)
+            self.pictureLabel.setPixmap(self.imagePixmap)
+            self.pictureLabel.adjustSize()
+
+# ======================================================================= PictureBar Stuff ===================================
     def _createPictureBarLayout(self):
         """
         Creates the sidebar that views the image, also has upload and save buttons
@@ -111,9 +148,11 @@ class Window(QMainWindow):
         # incase you cancel
         if file_name:
             #self.pictureLabel.setText(file_name[0])
-            self.ImagePixmap = QPixmap(file_name[0])
+            self.originalFilePath = file_name[0]
+            self.imagePixmap = QPixmap(file_name[0])
+            self.originalImagePixmap = self.imagePixmap
             #self.pictureLabel.setPixmap(self.ImagePixmap.scaled(1000,800,  Qt.KeepAspectRatio))
-            self.pictureLabel.setPixmap(self.ImagePixmap)
+            self.pictureLabel.setPixmap(self.imagePixmap)
             self.pictureLabel.adjustSize()
             # self.pictureLabel.setScaledContents(True)
 
