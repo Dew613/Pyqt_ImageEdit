@@ -34,6 +34,9 @@ from PyQt5.QtCore import Qt
 #QT gui imports
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtGui import QTransform
+from PyQt5.QtGui import QImage
+from PyQt5.QtGui import QColor
+
 
 
 class Window(QMainWindow):
@@ -90,7 +93,7 @@ class Window(QMainWindow):
         sidebar = QVBoxLayout()
         sidebar.addWidget(self.createRotateClockwiseButton())
         sidebar.addWidget(self.createRotateCounterClockwiseButton())
-        sidebar.addWidget(QPushButton("Button 3"))
+        sidebar.addWidget(self.createBlackNWhiteButton())
         sidebar.addWidget(QPushButton("Button 4"))
         return sidebar
 
@@ -103,6 +106,11 @@ class Window(QMainWindow):
         rotateButton = QPushButton("Rotate 90 Counter-Clockwise")
         rotateButton.clicked.connect(self.rotateImageCounterClockwise)
         return rotateButton
+
+    def createBlackNWhiteButton(self):
+        filterButton = QPushButton("Make Black and White")
+        filterButton.clicked.connect(self.transformBlackNWhite)
+        return filterButton
 
     def rotateImageClockwise(self):
         if self.originalImagePixmap:
@@ -119,6 +127,34 @@ class Window(QMainWindow):
             self.imagePixmap = self.imagePixmap.transformed(rotateTransform)
             self.pictureLabel.setPixmap(self.imagePixmap)
             self.pictureLabel.adjustSize()
+
+    def transformBlackNWhite(self):
+        targetImage = self.imagePixmap.toImage()
+        # print(targetImage)
+        imgWidth = targetImage.width()
+        imgHeight = targetImage.height()
+        # print(imgHeight)
+        # print(imgWidth)
+
+        for x in range(0,imgWidth):
+            for y in range(0,imgHeight):
+                targetPixel = targetImage.pixelColor(x,y).getRgb()
+                #print(targetPixel.getRgb())
+                pixel_red = targetPixel[0]
+                pixel_blue = targetPixel[1]
+                pixel_green = targetPixel[2]
+                pixel_avg = (pixel_red + pixel_blue + pixel_green) / 3
+                new_color = QColor(0,0,0)
+                if pixel_avg > 127:
+                    new_color = QColor(255,255,255)
+                
+                targetImage.setPixelColor(x,y,new_color)
+        
+        targetPixmap = QPixmap(targetImage)
+        # targetPixel = targetPixmap.fromImage(targetImage)
+        self.imagePixmap = targetPixmap
+        self.pictureLabel.setPixmap(self.imagePixmap)
+        self.pictureLabel.adjustSize()
 
 # ======================================================================= PictureBar Stuff ===================================
     def _createPictureBarLayout(self):
