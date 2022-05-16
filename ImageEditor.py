@@ -30,12 +30,14 @@ from PyQt5.QtWidgets import QWidget
 from PyQt5.QtWidgets import QFileDialog
 from PyQt5.QtWidgets import QScrollArea
 from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QAction
 
 #QT gui imports
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtGui import QTransform
 from PyQt5.QtGui import QImage
 from PyQt5.QtGui import QColor
+from sklearn.datasets import load_files
 
 
 
@@ -66,10 +68,16 @@ class Window(QMainWindow):
         tools = QToolBar()
         self.addToolBar(tools)
         tools.addAction("Exit", self.close)
+        loadfile = QAction("Load img", self)
+        tools.addAction(loadfile)
+        loadfile.triggered.connect(self.getImage)
+        resetImg = QAction("Reset img", self)
+        tools.addAction(resetImg)
+        resetImg.triggered.connect(self.resetImage)
 
     def _createStatusBar(self):
         status = QStatusBar()
-        status.showMessage("I'm a status bar!")
+        status.showMessage("No image Loaded")
         self.setStatusBar(status)
 # ============================================================================ Layout Settings ====================================================================
 
@@ -83,6 +91,17 @@ class Window(QMainWindow):
         widget.setLayout(windowLayout)
         self.setCentralWidget(widget)
 
+    def _setStatus(self, newText):
+        status = QStatusBar()
+        status.showMessage(newText)
+        self.setStatusBar(status)
+
+    def _displayImage(self):
+        self.pictureLabel.setPixmap(self.imagePixmap)
+        self.pictureLabel.adjustSize()
+        self.pictureLabel.setAlignment(Qt.AlignCenter)
+
+
 
 # ======================================================================= Sidebar Stuff ===================================
 
@@ -94,7 +113,8 @@ class Window(QMainWindow):
         sidebar.addWidget(self.createRotateClockwiseButton())
         sidebar.addWidget(self.createRotateCounterClockwiseButton())
         sidebar.addWidget(self.createBlackNWhiteButton())
-        sidebar.addWidget(QPushButton("Button 4"))
+        sidebar.addWidget(self.createGrayScaleButton())
+        sidebar.addWidget(self.createResetImageButton())
         return sidebar
 
     def createRotateClockwiseButton(self):
@@ -112,6 +132,22 @@ class Window(QMainWindow):
         filterButton.clicked.connect(self.transformBlackNWhite)
         return filterButton
 
+    def createGrayScaleButton(self):
+        filterButton = QPushButton("Make Grayscale")
+        filterButton.clicked.connect(self.transformGrayScale)
+        return filterButton
+
+    def createResetImageButton(self):
+        resetButton = QPushButton("Reset the Image")
+        resetButton.clicked.connect(self.resetImage)
+        return resetButton
+    
+    def resetImage(self):
+        self.imagePixmap = self.originalImagePixmap
+        self.pictureLabel.setPixmap(self.imagePixmap)
+        self.pictureLabel.adjustSize()
+        self._setStatus("Reset the image")
+
     def rotateImageClockwise(self):
         if self.originalImagePixmap:
             rotateTransform = QTransform()
@@ -119,6 +155,7 @@ class Window(QMainWindow):
             self.imagePixmap = self.imagePixmap.transformed(rotateTransform)
             self.pictureLabel.setPixmap(self.imagePixmap)
             self.pictureLabel.adjustSize()
+        self._setStatus("Rotated the image 90 degrees Clockwise")
 
     def rotateImageCounterClockwise(self):
         if self.originalImagePixmap:
@@ -127,8 +164,36 @@ class Window(QMainWindow):
             self.imagePixmap = self.imagePixmap.transformed(rotateTransform)
             self.pictureLabel.setPixmap(self.imagePixmap)
             self.pictureLabel.adjustSize()
+        self._setStatus("Rotated the image 90 degrees Counter-Clockwise")
 
     def transformBlackNWhite(self):
+        targetImage = self.imagePixmap.toImage()
+        # print(targetImage)
+        imgWidth = targetImage.width()
+        imgHeight = targetImage.height()
+        # print(imgHeight)
+        # print(imgWidth)
+        for x in range(0,imgWidth):
+            for y in range(0,imgHeight):
+                targetPixel = targetImage.pixelColor(x,y).getRgb()
+                #print(targetPixel.getRgb())
+                pixel_red = targetPixel[0]
+                pixel_blue = targetPixel[1]
+                pixel_green = targetPixel[2]
+                pixel_avg = (pixel_red + pixel_blue + pixel_green) / 3
+                new_color = QColor(0,0,0)
+                if pixel_avg > 127:
+                    new_color = QColor(255,255,255)
+                targetImage.setPixelColor(x,y,new_color)
+        
+        targetPixmap = QPixmap(targetImage)
+        # targetPixel = targetPixmap.fromImage(targetImage)
+        self.imagePixmap = targetPixmap
+        self.pictureLabel.setPixmap(self.imagePixmap)
+        self.pictureLabel.adjustSize()
+        self._setStatus("Turned the image Black and White")
+
+    def transformGrayScale(self):
         targetImage = self.imagePixmap.toImage()
         # print(targetImage)
         imgWidth = targetImage.width()
@@ -143,11 +208,8 @@ class Window(QMainWindow):
                 pixel_red = targetPixel[0]
                 pixel_blue = targetPixel[1]
                 pixel_green = targetPixel[2]
-                pixel_avg = (pixel_red + pixel_blue + pixel_green) / 3
-                new_color = QColor(0,0,0)
-                if pixel_avg > 127:
-                    new_color = QColor(255,255,255)
-                
+                pixel_avg = int((pixel_red + pixel_blue + pixel_green) / 3)
+                new_color = QColor(pixel_avg,pixel_avg,pixel_avg)
                 targetImage.setPixelColor(x,y,new_color)
         
         targetPixmap = QPixmap(targetImage)
@@ -155,6 +217,7 @@ class Window(QMainWindow):
         self.imagePixmap = targetPixmap
         self.pictureLabel.setPixmap(self.imagePixmap)
         self.pictureLabel.adjustSize()
+        self._setStatus("Turned the image into grayscale")
 
 # ======================================================================= PictureBar Stuff ===================================
     def _createPictureBarLayout(self):
@@ -164,10 +227,11 @@ class Window(QMainWindow):
         pictureBar = QVBoxLayout()
         # scrollArea = QScrollArea()
         
-        self.pictureLabel = QLabel("ImageLabel")
+        self.pictureLabel = QLabel("No Image Loaded /n Click the 'Choose an Image' button to select an Image")
         # adds scroll since images might be too big
         scrollArea = QScrollArea()
         scrollArea.setWidget(self.pictureLabel)
+        scrollArea.setAlignment(Qt.AlignCenter)
         uploadButton = QPushButton("Choose an Image")
         uploadButton.clicked.connect(self.getImage)
         pictureBar.addWidget(scrollArea)
@@ -180,7 +244,7 @@ class Window(QMainWindow):
     def getImage(self):
         # opens in current directory
         # returns a tuple
-        file_name = QFileDialog.getOpenFileName(self, "Open Image", "", "Image Files (*.png *.jpg)" )
+        file_name = QFileDialog.getOpenFileName(self, "Open Image", "", "Image Files (*.png *.jpg *.jpeg)" )
         # incase you cancel
         if file_name:
             #self.pictureLabel.setText(file_name[0])
@@ -190,7 +254,9 @@ class Window(QMainWindow):
             #self.pictureLabel.setPixmap(self.ImagePixmap.scaled(1000,800,  Qt.KeepAspectRatio))
             self.pictureLabel.setPixmap(self.imagePixmap)
             self.pictureLabel.adjustSize()
+            self.pictureLabel.setAlignment(Qt.AlignCenter)
             # self.pictureLabel.setScaledContents(True)
+            self._setStatus("Loaded the image")
 
 
 
